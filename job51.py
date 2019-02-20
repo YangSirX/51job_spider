@@ -119,7 +119,7 @@ class Job51Spider(object):
         :param list_html: get_list_page()返回的列表页源代码
         :return: 这里只能得到列表页的职位信息，详情页的数据还无法得到，将列表页的数据返回给解析详情页数据的函数，和详情页的数据一起保存至数据库。
         """
-        pattern = re.compile(r'<div class="el">.*?<a.*?title="(.*?)" href="(.*?)".*?<a.*?title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*?<span class="t5">(.*?)</span>', re.S)
+        pattern = re.compile(r'<div class="el">.*?<a.*?title="(.*?)".*?href="(.*?)".*?<a.*?title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*?<span class="t5">(.*?)</span>', re.S)
         list_datas = re.findall(pattern, list_html)
         # print(list_datas)
         return list_datas
@@ -129,13 +129,17 @@ class Job51Spider(object):
         请求详情页url，得到详情页的网页源代码
         :return: 交给下一个函数进行详情页数据的提取
         """
+        count = 0
         try:
             response = requests.get(url=detail_url, headers=self.headers)
             if response.status_code == 200:
                 return response.content.decode('gbk')
             else:
-                print('详情页状态码异常：{}'.format(response.status_code))
-                return None
+                    print('详情页状态码异常：{},{}'.format(response.status_code,detail_url))
+                    file = open('error.txt','a+')
+                    file.write(f'{detail_url}')
+                    file.close()
+                    return None
         except Exception as e:
             print('详情页请求失败：{}'.format(e))
             return None
@@ -147,20 +151,21 @@ class Job51Spider(object):
         :return:
         """
         # 由于详情页的页面结构可能存在不一样的情况，所以需要通过详情页的url地址来判断具体采用什么样的正则表达式。
-        if 'jobs.51job.com' in detail_url:
-            pattern = re.compile(r'<div class="cn">.*?<h1 title="(.*?)">.*?<strong>(.*?)</strong>.*?<a.*?title="(.*?)".*?<p class="msg ltype" title="(.*?)".*?<div class="t1">(.*?)</div>.*?<div class="tBorderTop_box">.*?<div class="bmsg.*?">(.*?)</div>', re.S)
-            detail_data = re.findall(pattern, detail_html)
-            if detail_data:
-                return detail_data[0]
-            else:
-                print('列表为空')
+        if detail_html:
+            if 'jobs.51job.com' in detail_url:
+                pattern = re.compile(r'<div class="cn">.*?<h1 title="(.*?)">.*?<strong>(.*?)</strong>.*?<a.*?title="(.*?)".*?<p class="msg ltype" title="(.*?)".*?<div class="t1">(.*?)</div>.*?<div class="tBorderTop_box">.*?<div class="bmsg.*?">(.*?)</div>', re.S)
+                detail_data = re.findall(pattern, detail_html)
+                if detail_data:
+                    return detail_data[0]
+                else:
+                    print('列表为空')
+                    return None
+            elif '51rz.51job.com' in detail_url:
+                print(detail_url)
                 return None
-        elif '51rz.51job.com' in detail_url:
-            print(detail_url)
-            return None
-        else:
-            print(detail_url)
-            return None
+            else:
+                print(detail_url)
+                return None
 
 if __name__ == '__main__':
 
@@ -168,7 +173,7 @@ if __name__ == '__main__':
 
     code_dict = parse_city_code()
     sp = Job51Spider(code_dict)
-    for x in range(1, 50):
+    for x in range(9, 10):
         list_html = sp.get_list_page(x)
         if list_html:
             list_datas = sp.parse_list_page(list_html)
